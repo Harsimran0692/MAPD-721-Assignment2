@@ -59,6 +59,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.mapd_721_a2_harsimran_singh.components.DatePicker
 import com.example.mapd_721_a2_harsimran_singh.components.HeartRateHistory
 import com.example.mapd_721_a2_harsimran_singh.components.TimePicker
+import com.example.mapd_721_a2_harsimran_singh.data.loadHeartRates
+import com.example.mapd_721_a2_harsimran_singh.data.saveHeartRate
 import com.example.mapd_721_a2_harsimran_singh.ui.theme.MAPD721A2Harsimran_SinghTheme
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -263,59 +265,6 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
         }
     }
 }
-suspend fun saveHeartRate(client: HealthConnectClient, bpm: Int, date: String, time: String) {
-    try {
-        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-        val formattedDateTime = "$date $time"
-        val dateTime = LocalDateTime.parse(formattedDateTime, formatter)
-
-        val startInstant = dateTime.toInstant(ZoneOffset.UTC)
-        val endInstant = startInstant.plusSeconds(30)  // Adjust this if needed
-
-        // Create metadata with date and time
-        val metadata = Metadata(mapOf("date" to date, "time" to time).toString())
-
-        // Prepare the record with the selected date and time
-        val record = HeartRateRecord(
-            startTime = startInstant,
-            endTime = endInstant,
-            startZoneOffset = ZoneOffset.UTC,
-            endZoneOffset = ZoneOffset.UTC,
-            samples = listOf(HeartRateRecord.Sample(time = startInstant, beatsPerMinute = bpm.toLong())),
-            metadata = metadata
-        )
-
-        // Insert the record using the client
-        client.insertRecords(listOf(record))
-        Log.d("HealthConnect", "Heart rate saved: $bpm BPM")
-    } catch (e: Exception) {
-        Log.e("HealthConnect", "Failed to save heart rate", e)
-    }
-}
-
-suspend fun loadHeartRates(client: HealthConnectClient): List<HeartRateRecord> {
-    return try {
-        val now = Instant.now()
-
-        // Ensure TimeRangeFilter is available, or create a filter to match your needs
-        val timeRangeFilter = TimeRangeFilter.before(now) // Ensure this is the correct filter
-
-        val response = client.readRecords(
-            ReadRecordsRequest(
-                recordType = HeartRateRecord::class,
-                timeRangeFilter = timeRangeFilter
-            )
-        )
-
-        // Return the loaded heart rate records
-        response.records
-    } catch (e: Exception) {
-        Log.e("HealthConnect", "Failed to load heart rate records", e)
-        emptyList()
-    }
-}
-
-
 
 
 @Preview(showBackground = true)
