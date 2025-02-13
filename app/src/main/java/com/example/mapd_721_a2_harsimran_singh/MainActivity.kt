@@ -1,12 +1,15 @@
 package com.example.mapd_721_a2_harsimran_singh
 
-import android.app.DatePickerDialog
+import android.annotation.SuppressLint
 import android.app.TimePickerDialog
+import android.content.Context
 import android.icu.util.Calendar
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,7 +22,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -36,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,32 +49,88 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.HeartRateRecord
+import androidx.health.connect.client.records.metadata.Metadata
+import androidx.health.connect.client.request.ReadRecordsRequest
+import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.lifecycle.lifecycleScope
+import com.example.mapd_721_a2_harsimran_singh.components.DatePicker
+import com.example.mapd_721_a2_harsimran_singh.components.HeartRateHistory
+import com.example.mapd_721_a2_harsimran_singh.components.TimePicker
 import com.example.mapd_721_a2_harsimran_singh.ui.theme.MAPD721A2Harsimran_SinghTheme
+import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+
 
 class MainActivity : ComponentActivity() {
+    private lateinit var healthConnectManager: HealthConnectManager
+
+    // Define required permissions
+    private val requiredPermissions = setOf(
+        HealthPermission.getReadPermission(androidx.health.connect.client.records.HeartRateRecord::class),
+        HealthPermission.getWritePermission(androidx.health.connect.client.records.HeartRateRecord::class)
+    )
+
+    // Register the permissions launcher to request multiple permissions
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions.values.all { it }) {
+            Log.d("HealthConnect", "All required permissions granted!")
+        } else {
+            Log.e("HealthConnect", "Some permissions are missing!")
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        // Initialize HealthConnectManager
+        healthConnectManager = application as HealthConnectManager
+
+        // Check and request permissions
+        checkAndRequestPermissions()
+
+        // Setup the UI using Jetpack Compose
         setContent {
             MAPD721A2Harsimran_SinghTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DisplayHealthData(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        context = LocalContext.current
                     )
                 }
+            }
+        }
+    }
+
+    // Function to check and request permissions
+    private fun checkAndRequestPermissions() {
+        lifecycleScope.launch {
+            val hasPermissions = healthConnectManager.hasAllPermissions()
+            if (!hasPermissions) {
+                requestPermissionsLauncher.launch(requiredPermissions.toTypedArray())
+            } else {
+                Log.d("HealthConnect", "All required permissions already granted!")
             }
         }
     }
 }
 
 @Composable
-fun DisplayHealthData(modifier: Modifier) {
+fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
     var heartRateField by remember { mutableStateOf("") }
     var selectedDate by remember { mutableStateOf("") }
     var selectedTime by remember { mutableStateOf("") }
-    val itemsList = List(3) { "Item $it" }
+    var historyList by remember { mutableStateOf<List<HeartRateRecord>>(emptyList()) }
+    val coroutineScope = rememberCoroutineScope()
+    val client = HealthConnectClient.getOrCreate(context)
 
-    // The Column is wrapped inside a LazyColumn for the entire content to be scrollable
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -88,12 +147,10 @@ fun DisplayHealthData(modifier: Modifier) {
                 .background(Color(0xFF000080), shape = RoundedCornerShape(6.dp))
                 .padding(8.dp)
                 .fillMaxWidth()
-
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Heart Rate Input
         OutlinedTextField(
             value = heartRateField,
             onValueChange = { heartRateField = it },
@@ -111,47 +168,65 @@ fun DisplayHealthData(modifier: Modifier) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Date and Time Picker
         DatePicker(selectedDate = selectedDate, onDateChange = { selectedDate = it })
         TimePicker(selectedTime = selectedTime, onTimeChange = { selectedTime = it })
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Load Button
         Button(
+//            onClick = {
+//                coroutineScope.launch {
+//                    historyList = loadHeartRates(client)
+//                }
+//            },
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp),
-            enabled = true,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
                 containerColor = Color.Blue
             ),
-            shape = RoundedCornerShape(12.dp),
-            content = { Text("Load") },
-        )
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Load")
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         // Save Button
         Button(
+//            onClick = {
+//                val bpm = heartRateField.toIntOrNull()
+//                if (bpm != null && bpm in 1..300) {
+//                    coroutineScope.launch {
+//                        try {
+//                            saveHeartRate(client, bpm, selectedDate, selectedTime)
+//                            Toast.makeText(context, "Heart rate saved: $bpm BPM", Toast.LENGTH_SHORT).show()
+//                        } catch (e: Exception) {
+//                            Log.e("HealthConnect", "Failed to save heart rate", e)
+//                            Toast.makeText(context, "Failed to save heart rate", Toast.LENGTH_SHORT).show()
+//                        }
+//                    }
+//                } else {
+//                    Toast.makeText(context, "Enter a valid heart rate (1-300 BPM)", Toast.LENGTH_SHORT).show()
+//                }
+//            },
             onClick = {},
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 6.dp),
-            enabled = true,
             colors = ButtonDefaults.buttonColors(
                 contentColor = Color.White,
                 containerColor = Color(0xFF006400)
             ),
-            shape = RoundedCornerShape(12.dp),
-            content = { Text("Save") },
-        )
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Save")
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Heart Rate History Section
         Text(
             "Heart Rate History",
             fontSize = 23.sp,
@@ -159,16 +234,8 @@ fun DisplayHealthData(modifier: Modifier) {
             color = Color.Red
         )
 
-        // LazyColumn for scrolling through the heart rate history
-        HeartRateHistory(
-            itemsList = itemsList,
-            heartRateField = heartRateField,
-            selectedDate = selectedDate,
-            selectedTime = selectedTime
-        )
+        HeartRateHistory(itemsList = historyList)
 
-
-        // Bottom Section (Name and Student ID)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -179,8 +246,7 @@ fun DisplayHealthData(modifier: Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center // Center alignment
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     text = "Name: Harsimran Singh",
@@ -200,166 +266,6 @@ fun DisplayHealthData(modifier: Modifier) {
     }
 }
 
-@Composable
-fun HeartRateHistory(
-    itemsList: List<String>,
-    heartRateField: String,
-    selectedDate: String,
-    selectedTime: String
-){
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .height(200.dp)
-            .background(Color(0xFFABABAB), shape = RoundedCornerShape(16.dp))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState()) // Enable scroll on the column
-        ) {
-            // Display the first 5 items
-            itemsList.forEach { item ->
-                RowItem(
-                    heartRate = heartRateField,
-                    selectedDate = selectedDate,
-                    selectedTime = selectedTime
-                )
-            }
-        }
-    }
-}
-
-
-@Composable
-fun RowItem(heartRate: String, selectedDate: String, selectedTime: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = heartRate, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-        Text(text = selectedDate, fontSize = 18.sp, fontWeight = FontWeight.Normal)
-        Text(text = selectedTime, fontSize = 18.sp, fontWeight = FontWeight.Normal)
-    }
-}
-
-@Composable
-fun TimePicker(selectedTime: String, onTimeChange: (String) -> Unit){
-    val context = LocalContext.current
-    val calender = Calendar.getInstance()
-    val hour = calender.get(Calendar.HOUR)
-    val minute = calender.get(Calendar.MINUTE)
-
-//    var selectedTime by remember { mutableStateOf("") }
-    var showTimePicker by remember { mutableStateOf(false) }
-
-    if(showTimePicker){
-        TimePickerDialog(
-            context, {
-                _, selectedHour, selectedMinute ->
-                val time = "$selectedHour:${selectedMinute.toString().padStart(2, '0')}"
-                onTimeChange(time)
-                showTimePicker = false
-            },
-            hour, minute, false
-        ).show()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Using a Card as a date selection button
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showTimePicker = true }
-                .padding(6.dp, 10.dp, 6.dp, 10.dp),
-            shape = MaterialTheme.shapes.large,
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Select Date",
-                    tint = Color(0xFF6200EE),
-                    modifier = Modifier.padding(end = 16.dp)
-                )
-                Text(
-                    text = if (selectedTime.isEmpty()) "Select Time (hh:mm)" else "Time: $selectedTime",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (selectedTime.isEmpty()) Color.Gray else Color.Black
-                )
-            }
-        }
-
-    }
-}
-
-@Composable
-fun DatePicker(selectedDate: String, onDateChange: (String) -> Unit) {
-    val context = LocalContext.current
-    val calendar = Calendar.getInstance()
-    val year = calendar.get(Calendar.YEAR)
-    val month = calendar.get(Calendar.MONTH)
-    val day = calendar.get(Calendar.DAY_OF_MONTH)
-
-    var showDatePicker by remember { mutableStateOf(false) }
-
-    // Show DatePickerDialog when showDatePicker is true
-    if (showDatePicker) {
-        DatePickerDialog(
-            context,
-            { _, selectedYear, selectedMonth, selectedDay ->
-                val date = "$selectedDay/${selectedMonth + 1}/$selectedYear"
-                onDateChange(date)
-                showDatePicker = false
-            },
-            year, month, day
-        ).show()
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Using a Card as a date selection button
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDatePicker = true }
-                .padding(6.dp, 10.dp, 6.dp, 10.dp),
-            shape = MaterialTheme.shapes.large,
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.DateRange,
-                    contentDescription = "Select Date",
-                    tint = Color(0xFF6200EE), // Icon color
-                    modifier = Modifier.padding(end = 16.dp)
-                )
-                Text(
-                    text = if (selectedDate.isEmpty()) "Select Date (DD/MM/YYYY)" else "Date: $selectedDate",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), // Correct style
-                    color = if (selectedDate.isEmpty()) Color.Gray else Color.Black
-                )
-            }
-        }
-
-    }
-}
-
 
 
 
@@ -367,6 +273,6 @@ fun DatePicker(selectedDate: String, onDateChange: (String) -> Unit) {
 @Composable
 fun GreetingPreview() {
     MAPD721A2Harsimran_SinghTheme {
-        DisplayHealthData(modifier = Modifier)
+        DisplayHealthData(modifier = Modifier, LocalContext.current)
     }
 }
