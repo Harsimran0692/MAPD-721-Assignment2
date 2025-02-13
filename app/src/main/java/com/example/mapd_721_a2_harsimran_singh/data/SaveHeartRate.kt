@@ -10,17 +10,23 @@ import java.time.format.DateTimeFormatter
 
 suspend fun saveHeartRate(client: HealthConnectClient, bpm: Int, date: String, time: String) {
     try {
+        // Define the date and time format
         val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+
+        // Combine date and time into a single string
         val formattedDateTime = "$date $time"
+
+        // Parse the formatted date-time string into a LocalDateTime object
         val dateTime = LocalDateTime.parse(formattedDateTime, formatter)
 
+        // Convert LocalDateTime to Instant using UTC timezone
         val startInstant = dateTime.toInstant(ZoneOffset.UTC)
-        val endInstant = startInstant.plusSeconds(30)  // Adjust this if needed
+        val endInstant = startInstant.plusSeconds(30)  // Adjust duration if needed
 
-        // Create metadata with date and time
+        // Create metadata containing date and time information
         val metadata = Metadata(mapOf("date" to date, "time" to time).toString())
 
-        // Prepare the record with the selected date and time
+        // Create a HeartRateRecord with the provided data
         val record = HeartRateRecord(
             startTime = startInstant,
             endTime = endInstant,
@@ -30,10 +36,11 @@ suspend fun saveHeartRate(client: HealthConnectClient, bpm: Int, date: String, t
             metadata = metadata
         )
 
-        // Insert the record using the client
+        // Insert the heart rate record into Health Connect
         client.insertRecords(listOf(record))
         Log.d("HealthConnect", "Heart rate saved: $bpm BPM")
     } catch (e: Exception) {
+        // Log the error in case saving fails
         Log.e("HealthConnect", "Failed to save heart rate", e)
     }
 }

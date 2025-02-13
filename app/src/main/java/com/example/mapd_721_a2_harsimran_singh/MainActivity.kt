@@ -1,9 +1,6 @@
 package com.example.mapd_721_a2_harsimran_singh
 
-import android.annotation.SuppressLint
-import android.app.TimePickerDialog
 import android.content.Context
-import android.icu.util.Calendar
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -11,26 +8,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -52,9 +39,6 @@ import androidx.compose.ui.unit.sp
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HeartRateRecord
-import androidx.health.connect.client.records.metadata.Metadata
-import androidx.health.connect.client.request.ReadRecordsRequest
-import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.lifecycle.lifecycleScope
 import com.example.mapd_721_a2_harsimran_singh.components.DatePicker
 import com.example.mapd_721_a2_harsimran_singh.components.HeartRateHistory
@@ -63,16 +47,12 @@ import com.example.mapd_721_a2_harsimran_singh.data.loadHeartRates
 import com.example.mapd_721_a2_harsimran_singh.data.saveHeartRate
 import com.example.mapd_721_a2_harsimran_singh.ui.theme.MAPD721A2Harsimran_SinghTheme
 import kotlinx.coroutines.launch
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 
 
 class MainActivity : ComponentActivity() {
     private lateinit var healthConnectManager: HealthConnectManager
 
-    // Define required permissions
+    // Define required permissions for reading and writing heart rate data
     private val requiredPermissions = setOf(
         HealthPermission.getReadPermission(androidx.health.connect.client.records.HeartRateRecord::class),
         HealthPermission.getWritePermission(androidx.health.connect.client.records.HeartRateRecord::class)
@@ -95,7 +75,7 @@ class MainActivity : ComponentActivity() {
         // Initialize HealthConnectManager
         healthConnectManager = application as HealthConnectManager
 
-        // Check and request permissions
+        // Check and request permissions if needed
         checkAndRequestPermissions()
 
         // Setup the UI using Jetpack Compose
@@ -111,7 +91,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // Function to check and request permissions
+    // Function to check if all required permissions are granted, otherwise request them
     private fun checkAndRequestPermissions() {
         lifecycleScope.launch {
             val hasPermissions = healthConnectManager.hasAllPermissions()
@@ -139,6 +119,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Title text
         Text(
             "MAPD-721-Assignment 2",
             fontSize = 24.sp,
@@ -153,6 +134,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Input field for heart rate
         OutlinedTextField(
             value = heartRateField,
             onValueChange = { heartRateField = it },
@@ -170,11 +152,13 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
+        // Date picker and time picker
         DatePicker(selectedDate = selectedDate, onDateChange = { selectedDate = it })
         TimePicker(selectedTime = selectedTime, onTimeChange = { selectedTime = it })
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Load heart rate history button
         Button(
             onClick = {
                 coroutineScope.launch {
@@ -195,7 +179,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Save Button
+        // Save heart rate button
         Button(
             onClick = {
                 val bpm = heartRateField.toIntOrNull()
@@ -225,8 +209,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
             Text("Save")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
+        // Section for displaying heart rate history
         Text(
             "Heart Rate History",
             fontSize = 23.sp,
@@ -236,6 +219,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
 
         HeartRateHistory(itemsList = historyList)
 
+        // Box containing student information
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -265,6 +249,7 @@ fun DisplayHealthData(modifier: Modifier = Modifier, context: Context) {
         }
     }
 }
+
 
 
 @Preview(showBackground = true)

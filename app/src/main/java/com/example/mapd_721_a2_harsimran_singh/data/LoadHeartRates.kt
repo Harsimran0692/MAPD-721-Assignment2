@@ -9,21 +9,23 @@ import java.time.Instant
 
 suspend fun loadHeartRates(client: HealthConnectClient): List<HeartRateRecord> {
     return try {
-        val now = Instant.now()
+        val now = Instant.now() // Get the current time
 
-        // Ensure TimeRangeFilter is available, or create a filter to match your needs
-        val timeRangeFilter = TimeRangeFilter.before(now) // Ensure this is the correct filter
+        // Create a time range filter to fetch heart rate records before the current time
+        val timeRangeFilter = TimeRangeFilter.before(now)
 
+        // Request heart rate records from Health Connect
         val response = client.readRecords(
             ReadRecordsRequest(
-                recordType = HeartRateRecord::class,
-                timeRangeFilter = timeRangeFilter
+                recordType = HeartRateRecord::class, // Specify the type of record to read
+                timeRangeFilter = timeRangeFilter   // Apply the time filter
             )
         )
 
-        // Return the loaded heart rate records
+        // Return the retrieved heart rate records
         response.records
     } catch (e: Exception) {
+        // Log the error and return an empty list in case of failure
         Log.e("HealthConnect", "Failed to load heart rate records", e)
         emptyList()
     }

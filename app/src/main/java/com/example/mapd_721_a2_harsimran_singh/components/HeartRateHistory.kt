@@ -26,24 +26,28 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 fun HeartRateHistory(itemsList: List<HeartRateRecord>) {
+    // Box container for heart rate history section
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp)
             .height(200.dp)
-            .background(Color(0xFFABABAB), shape = RoundedCornerShape(16.dp))
+            .background(Color(0xFFABABAB), shape = RoundedCornerShape(16.dp)) // Grey background with rounded corners
     ) {
+        // Column to display multiple heart rate records with scroll functionality
         Column(
             modifier = Modifier
-                .fillMaxSize() // Ensures it expands fully within Box
-                .verticalScroll(rememberScrollState())
-                .padding(8.dp) // Adds spacing for better scrolling
+                .fillMaxSize() // Ensures it takes full space within the Box
+                .verticalScroll(rememberScrollState()) // Enables scrolling when list grows
+                .padding(8.dp) // Adds inner padding for better spacing
         ) {
+            // Loop through each heart rate record and display its details
             itemsList.forEach { record ->
-                val heartRate = record.samples.firstOrNull()?.beatsPerMinute?.toString() ?: "N/A"
+                val heartRate = record.samples.firstOrNull()?.beatsPerMinute?.toString() ?: "N/A" // Get BPM or "N/A" if empty
                 val dateTime = record.startTime.atOffset(ZoneOffset.UTC)
-                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                    .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) // Format timestamp
 
+                // Extract date and time separately
                 RowItem(
                     heartRate = heartRate,
                     selectedDate = dateTime.split(" ")[0],
@@ -56,15 +60,22 @@ fun HeartRateHistory(itemsList: List<HeartRateRecord>) {
 
 @Composable
 fun RowItem(heartRate: String, selectedDate: String, selectedTime: String) {
+    // Row layout for displaying heart rate, date, and time in a structured manner
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(8.dp), // Adds spacing between items
+        horizontalArrangement = Arrangement.SpaceAround, // Distributes items evenly
+        verticalAlignment = Alignment.CenterVertically, // Aligns items in the center
     ) {
+        // Display heart rate value
         Text(text = heartRate, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+        // Display recorded date
         Text(text = selectedDate, fontSize = 18.sp, fontWeight = FontWeight.Normal)
+
+        // Display recorded time
         Text(text = selectedTime, fontSize = 18.sp, fontWeight = FontWeight.Normal)
     }
 }
+
