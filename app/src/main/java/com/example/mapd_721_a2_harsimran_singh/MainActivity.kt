@@ -43,8 +43,8 @@ import androidx.lifecycle.lifecycleScope
 import com.example.mapd_721_a2_harsimran_singh.components.DatePicker
 import com.example.mapd_721_a2_harsimran_singh.components.HeartRateHistory
 import com.example.mapd_721_a2_harsimran_singh.components.TimePicker
-import com.example.mapd_721_a2_harsimran_singh.data.loadHeartRates
-import com.example.mapd_721_a2_harsimran_singh.data.saveHeartRate
+import com.example.mapd_721_a2_harsimran_singh.dataHandling.loadHeartRates
+import com.example.mapd_721_a2_harsimran_singh.dataHandling.saveHeartRate
 import com.example.mapd_721_a2_harsimran_singh.ui.theme.MAPD721A2Harsimran_SinghTheme
 import kotlinx.coroutines.launch
 

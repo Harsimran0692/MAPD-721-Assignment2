@@ -1,4 +1,4 @@
-package com.example.mapd_721_a2_harsimran_singh.data
+package com.example.mapd_721_a2_harsimran_singh.dataHandling
 
 import android.util.Log
 import androidx.health.connect.client.HealthConnectClient
